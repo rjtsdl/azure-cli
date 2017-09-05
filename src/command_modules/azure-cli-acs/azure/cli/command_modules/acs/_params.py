@@ -86,7 +86,7 @@ register_cli_argument('acs', 'api_version', options_list=('--api-version',), req
 register_cli_argument('acs', 'dns_name_prefix', options_list=('--dns-prefix', '-d'), help='default use the format of <clustername>-<resourcegroupname>-<subid>, will trim the length and replace sensitive characters if needed')
 register_cli_argument('acs', 'container_service_name', options_list=('--name', '-n'), help='The name of the container service', completer=get_resource_name_completion_list('Microsoft.ContainerService/ContainerServices'))
 
-register_cli_argument('acs', 'ssh_key_value', required=False, help='SSH key file value or key file path.', type=file_type, default=os.path.join('~', '.ssh', 'id_rsa.pub'), completer=FilesCompleter())
+register_cli_argument('acs', 'ssh_key_value', options_list=('--ssh-key-value', '--ssh-key-file'), required=False, help='SSH key file value or key file path.', type=file_type, default=os.path.join('~', '.ssh', 'id_rsa.pub'), completer=FilesCompleter())
 register_cli_argument('acs create', 'name', arg_type=name_arg_type, validator=validate_ssh_key)
 
 register_extra_cli_argument('acs create', 'generate_ssh_keys', action='store_true', help='Generate SSH public and private key files if missing', validator=validate_create_parameters)

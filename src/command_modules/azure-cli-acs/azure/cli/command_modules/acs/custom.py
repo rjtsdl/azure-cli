@@ -114,7 +114,7 @@ def wait_then_open_async(url):
     t.start()
 
 
-def acs_browse(resource_group, name, disable_browser=False, ssh_key_file=None):
+def acs_browse(resource_group, name, disable_browser=False, ssh_key_value=None):
     """
     Opens a browser to the web interface for the cluster orchestrator
 
@@ -124,44 +124,44 @@ def acs_browse(resource_group, name, disable_browser=False, ssh_key_file=None):
     :type resource_group_name: String
     :param disable_browser: If true, don't launch a web browser after estabilishing the proxy
     :type disable_browser: bool
-    :param ssh_key_file: If set a path to an SSH key to use, only applies to DCOS
-    :type ssh_key_file: string
+    :param ssh_key_value: If set a path to an SSH key to use, only applies to DCOS
+    :type ssh_key_value: string
     """
     _acs_browse_internal(_get_acs_info(name, resource_group), resource_group, name, disable_browser,
-                         ssh_key_file)
+                         ssh_key_value)
 
 
-def _acs_browse_internal(acs_info, resource_group, name, disable_browser, ssh_key_file):
+def _acs_browse_internal(acs_info, resource_group, name, disable_browser, ssh_key_value):
     orchestrator_type = acs_info.orchestrator_profile.orchestrator_type  # pylint: disable=no-member
 
     if orchestrator_type == 'kubernetes' or \
        orchestrator_type == ContainerServiceOrchestratorTypes.kubernetes or \
        (acs_info.custom_profile and acs_info.custom_profile.orchestrator == 'kubernetes'):  # pylint: disable=no-member
-        return k8s_browse(name, resource_group, disable_browser, ssh_key_file=ssh_key_file)
+        return k8s_browse(name, resource_group, disable_browser, ssh_key_value=ssh_key_value)
     elif orchestrator_type == 'dcos' or orchestrator_type == ContainerServiceOrchestratorTypes.dcos:
-        return _dcos_browse_internal(acs_info, disable_browser, ssh_key_file)
+        return _dcos_browse_internal(acs_info, disable_browser, ssh_key_value)
     else:
         raise CLIError('Unsupported orchestrator type {} for browse'.format(orchestrator_type))
 
 
-def k8s_browse(name, resource_group, disable_browser=False, ssh_key_file=None):
+def k8s_browse(name, resource_group, disable_browser=False, ssh_key_value=None):
     """
     Launch a proxy and browse the Kubernetes web UI.
     :param disable_browser: If true, don't launch a web browser after estabilishing the proxy
     :type disable_browser: bool
     """
     acs_info = _get_acs_info(name, resource_group)
-    _k8s_browse_internal(name, acs_info, disable_browser, ssh_key_file)
+    _k8s_browse_internal(name, acs_info, disable_browser, ssh_key_value)
 
 
-def _k8s_browse_internal(name, acs_info, disable_browser, ssh_key_file):
+def _k8s_browse_internal(name, acs_info, disable_browser, ssh_key_value):
     if not which('kubectl'):
         raise CLIError('Can not find kubectl executable in PATH')
     browse_path = os.path.join(get_config_dir(), 'acsBrowseConfig.yaml')
     if os.path.exists(browse_path):
         os.remove(browse_path)
 
-    _k8s_get_credentials_internal(name, acs_info, browse_path, ssh_key_file)
+    _k8s_get_credentials_internal(name, acs_info, browse_path, ssh_key_value)
 
     logger.warning('Proxy running on 127.0.0.1:8001/ui')
     logger.warning('Press CTRL+C to close the tunnel...')
@@ -170,7 +170,7 @@ def _k8s_browse_internal(name, acs_info, disable_browser, ssh_key_file):
     subprocess.call(["kubectl", "--kubeconfig", browse_path, "proxy"])
 
 
-def dcos_browse(name, resource_group, disable_browser=False, ssh_key_file=None):
+def dcos_browse(name, resource_group, disable_browser=False, ssh_key_value=None):
     """
     Creates an SSH tunnel to the Azure container service, and opens the Mesosphere DC/OS dashboard in the browser.
 
@@ -180,20 +180,20 @@ def dcos_browse(name, resource_group, disable_browser=False, ssh_key_file=None):
     :type resource_group_name: String
     :param disable_browser: If true, don't launch a web browser after estabilishing the proxy
     :type disable_browser: bool
-    :param ssh_key_file: Path to the SSH key to use
-    :type ssh_key_file: string
+    :param ssh_key_value: Path to the SSH key to use
+    :type ssh_key_value: string
     """
     acs_info = _get_acs_info(name, resource_group)
-    _dcos_browse_internal(acs_info, disable_browser, ssh_key_file)
+    _dcos_browse_internal(acs_info, disable_browser, ssh_key_value)
 
 
-def _dcos_browse_internal(acs_info, disable_browser, ssh_key_file):
-    if not os.path.isfile(ssh_key_file):
-        raise CLIError('Private key file {} does not exist'.format(ssh_key_file))
+def _dcos_browse_internal(acs_info, disable_browser, ssh_key_value):
+    if ssh_key_value is not None and not _is_valid_ssh_rsa_public_key(ssh_key_value):
+        raise CLIError('Provided ssh key ({}) is invalid or non-existent'.format(ssh_key_value))
 
     acs = acs_client.ACSClient()
     if not acs.connect(_get_host_name(acs_info), _get_username(acs_info),
-                       key_filename=ssh_key_file):
+                       key_filename=ssh_key_value):
         raise CLIError('Error connecting to ACS: {}'.format(_get_host_name(acs_info)))
 
     octarine_bin = '/opt/mesosphere/bin/octarine'
@@ -795,7 +795,7 @@ def _invoke_deployment(resource_group_name, deployment_name, template, parameter
 
 def k8s_get_credentials(name, resource_group_name,
                         path=os.path.join(os.path.expanduser('~'), '.kube', 'config'),
-                        ssh_key_file=None):
+                        ssh_key_value=None):
     """Download and install kubectl credentials from the cluster master
     :param name: The name of the cluster.
     :type name: str
@@ -803,16 +803,16 @@ def k8s_get_credentials(name, resource_group_name,
     :type resource_group_name: str
     :param path: Where to install the kubectl config file
     :type path: str
-    :param ssh_key_file: Path to an SSH key file to use
-    :type ssh_key_file: str
+    :param ssh_key_value: Path to an SSH key file to use
+    :type ssh_key_value: str
     """
     acs_info = _get_acs_info(name, resource_group_name)
-    _k8s_get_credentials_internal(name, acs_info, path, ssh_key_file)
+    _k8s_get_credentials_internal(name, acs_info, path, ssh_key_value)
 
 
-def _k8s_get_credentials_internal(name, acs_info, path, ssh_key_file):
-    if ssh_key_file is not None and not os.path.isfile(ssh_key_file):
-        raise CLIError('Private key file {} does not exist'.format(ssh_key_file))
+def _k8s_get_credentials_internal(name, acs_info, path, ssh_key_value):
+    if ssh_key_value is not None and not _is_valid_ssh_rsa_public_key(ssh_key_value):
+        raise CLIError('Provided ssh key ({}) is invalid or non-existent'.format(ssh_key_value))
 
     dns_prefix = acs_info.master_profile.dns_prefix  # pylint: disable=no-member
     location = acs_info.location  # pylint: disable=no-member
@@ -828,7 +828,7 @@ def _k8s_get_credentials_internal(name, acs_info, path, ssh_key_file):
     # TODO: this only works for public cloud, need other casing for national clouds
 
     acs_client.secure_copy(user, '{}.{}.cloudapp.azure.com'.format(dns_prefix, location),
-                           '.kube/config', path_candidate, key_filename=ssh_key_file)
+                           '.kube/config', path_candidate, key_filename=ssh_key_value)
 
     # merge things
     if path_candidate != path:
