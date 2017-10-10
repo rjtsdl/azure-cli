@@ -18,18 +18,23 @@ def aks_list_table_format(results):
     table_results = []
 
     for result in results:
-        # move kubernetesVersion and provisioningState up to primary values
-        properties = result.get('properties', {})
-        result['kubernetesVersion'] = properties.get('kubernetesVersion')
-        result['provisioningState'] = properties.get('provisioningState')
-        result['fqdn'] = properties.get('fqdn')
-        # translate results into an ordered dictionary so the headers are predictably ordered
-        table_result = OrderedDict()
-        for item in ['name', 'location', 'resourceGroup',
-                     'kubernetesVersion', 'provisioningState', 'fqdn']:
-            table_result[item] = result.get(item)
-        table_results.append(table_result)
+        table_results.append(aks_show_table_format(result))
     return table_results
+
+
+def aks_show_table_format(result):
+    """Move some important nested properties up to the top level for --output=table format."""
+    # move kubernetesVersion and provisioningState up to primary values
+    properties = result.get('properties', {})
+    result['kubernetesVersion'] = properties.get('kubernetesVersion')
+    result['provisioningState'] = properties.get('provisioningState')
+    result['fqdn'] = properties.get('fqdn')
+    # translate results into an ordered dictionary so the headers are predictably ordered
+    table_result = OrderedDict()
+    for item in ['name', 'location', 'resourceGroup',
+                 'kubernetesVersion', 'provisioningState', 'fqdn']:
+        table_result[item] = result.get(item)
+    return table_result
 
 
 if not supported_api_version(PROFILE_TYPE, max_api='2017-08-31-profile'):
@@ -53,7 +58,7 @@ if not supported_api_version(PROFILE_TYPE, max_api='2017-08-31-profile'):
                 'azure.cli.command_modules.aks.custom#aks_scale', _aks_client_factory)
     cli_command(__name__, 'aks show',
                 'azure.cli.command_modules.aks.custom#aks_show', _aks_client_factory,
-                table_transformer=aks_list_table_format)
+                table_transformer=aks_show_table_format)
     cli_command(__name__, 'aks upgrade',
                 'azure.cli.command_modules.aks.custom#aks_upgrade', _aks_client_factory)
     cli_generic_wait_command(__name__, 'aks wait',
