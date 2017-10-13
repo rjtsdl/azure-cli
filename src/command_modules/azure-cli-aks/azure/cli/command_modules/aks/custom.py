@@ -609,7 +609,7 @@ def aks_create(client, resource_group_name, name, ssh_key_value,  # pylint: disa
                dns_name_prefix=None,
                location=None,
                admin_username="azureuser",
-               kubernetes_version="1.6.11",
+               kubernetes_version="1.7.7",
                agent_vm_size="Standard_D2_v2",
                agent_osdisk_size=0,
                agent_count=3,
