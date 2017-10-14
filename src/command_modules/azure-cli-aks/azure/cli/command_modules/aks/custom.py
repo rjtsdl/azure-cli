@@ -731,7 +731,7 @@ def aks_create(client, resource_group_name, name, ssh_key_value,  # pylint: disa
         return response
 
 
-def aks_delete(client, resource_group_name, name, no_wait=False):
+def aks_delete(client, resource_group_name, name, no_wait=False, **kwargs):
     """Delete a managed Kubernetes cluster.
     :param resource_group_name: The name of the resource group. The name
      is case insensitive.
@@ -821,7 +821,7 @@ def aks_scale(client, resource_group_name, name, agent_count):
     return client.create_or_update(resource_group_name, name, instance)
 
 
-def aks_upgrade(client, resource_group_name, name, kubernetes_version):
+def aks_upgrade(client, resource_group_name, name, kubernetes_version, **kwargs):
     """Upgrade a managed Kubernetes cluster to a newer version.
     :param resource_group_name: The name of the resource group. The name
      is case insensitive.
