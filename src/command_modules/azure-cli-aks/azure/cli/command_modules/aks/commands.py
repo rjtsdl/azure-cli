@@ -14,31 +14,23 @@ from ._client_factory import _aks_client_factory
 
 
 def aks_list_table_format(results):
-    """Move some important nested properties up to the top level for --output=table format."""
-    table_results = []
-
-    for result in results:
-        table_results.append(aks_show_table_format(result))
-    return table_results
+    """"Format a list of managed clusters as summary results for display with "-o table"."""
+    return [aks_show_table_format(r) for r in results]
 
 
 def aks_show_table_format(result):
-    """Move some important nested properties up to the top level for --output=table format."""
-    # move kubernetesVersion and provisioningState up to primary values
+    """Format a managed cluster as summary results for display with "-o table"."""
+    # move some nested properties up to top-level values
     properties = result.get('properties', {})
-    result['kubernetesVersion'] = properties.get('kubernetesVersion')
-    result['provisioningState'] = properties.get('provisioningState')
-    result['fqdn'] = properties.get('fqdn')
-    # translate results into an ordered dictionary so the headers are predictably ordered
-    table_result = OrderedDict()
-    for item in ['name', 'location', 'resourceGroup',
-                 'kubernetesVersion', 'provisioningState', 'fqdn']:
-        table_result[item] = result.get(item)
-    return table_result
+    promoted = ['kubernetesVersion', 'provisioningState', 'fqdn']
+    result.update({k: properties.get(k) for k in promoted})
+
+    columns = ['name', 'location', 'resourceGroup'] + promoted
+    # put results in an ordered dict so the headers are predictable
+    return OrderedDict({k: result.get(k) for k in columns})
 
 
 if not supported_api_version(PROFILE_TYPE, max_api='2017-08-31-profile'):
-    # managed clusters commands
     cli_command(__name__, 'aks browse',
                 'azure.cli.command_modules.aks.custom#aks_browse', _aks_client_factory)
     cli_command(__name__, 'aks create',
