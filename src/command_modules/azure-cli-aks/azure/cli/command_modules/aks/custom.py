@@ -135,7 +135,7 @@ def _urlretrieve(url, filename):
 
 
 def aks_install_cli(client_version='latest', install_location=None):
-    """Download the kubectl command line tool."""
+    """Install kubectl, a command-line interface for Kubernetes clusters."""
 
     if client_version == 'latest':
         context = _ssl_context()
@@ -757,7 +757,7 @@ def aks_delete(client, resource_group_name, name, no_wait=False, **kwargs):
 
 def aks_get_credentials(client, resource_group_name, name, admin=False,
                         path=os.path.join(os.path.expanduser('~'), '.kube', 'config')):
-    """Get access credentials for a managed Kubernetes cluster.
+    """Get credentials to access a managed Kubernetes cluster.
     :param path: A kubectl config file to create or update. Use "-" to print YAML
      to stdout instead
     :type path: str
@@ -803,7 +803,7 @@ def aks_get_credentials(client, resource_group_name, name, admin=False,
 
 
 def aks_scale(client, resource_group_name, name, agent_count):
-    """Change the number of agent nodes in a managed Kubernetes cluster.
+    """Scale the agent pool in a managed Kubernetes cluster.
     :param resource_group_name: The name of the resource group. The name
      is case insensitive.
     :type resource_group_name: str
@@ -843,7 +843,7 @@ def aks_upgrade(client, resource_group_name, name, kubernetes_version, **kwargs)
 
 
 def aks_get_versions(client, resource_group_name, name):
-    """Get versions available for upgrading a managed Kubernetes cluster.
+    """Get versions available to upgrade a managed Kubernetes cluster.
     :param resource_group_name: The name of the resource group. The name
      is case insensitive.
     :type resource_group_name: str
