@@ -719,16 +719,7 @@ def aks_create(client, resource_group_name, name, ssh_key_value,  # pylint: disa
         resource_name=name,
         parameters=mc,
         raw=no_wait)
-    if no_wait:
-        raw = response.response
-        if raw.status_code in (200, 201):
-            logger.warn("\nCreate request for {} successfully received.".format(name))
-        else:
-            msg = "Create request for {} returned {}: {}.".format(
-                name, raw.status_code, raw.reason)
-            raise CLIError(msg)
-    else:
-        return response
+    _handle_response(response, no_wait, operation="\nCreate", success_codes=[200, 201])
 
 
 def aks_delete(client, resource_group_name, name, no_wait=False, **kwargs):
@@ -743,16 +734,7 @@ def aks_delete(client, resource_group_name, name, no_wait=False, **kwargs):
     :type no_wait: bool
     """
     response = client.delete(resource_group_name, name, raw=no_wait)
-    if no_wait:
-        raw = response.response
-        if raw.status_code == 202:
-            logger.warn("Delete request for {} successfully received.".format(name))
-        else:
-            msg = "Delete request for {} returned {}: {}.".format(
-                name, raw.status_code, raw.reason)
-            raise CLIError(msg)
-    else:
-        return response
+    return _handle_response(response, no_wait, name, operation="Delete", success_codes=[202, ])
 
 
 def aks_get_credentials(client, resource_group_name, name, admin=False,
@@ -802,7 +784,7 @@ def aks_get_credentials(client, resource_group_name, name, admin=False,
                 logger.warning('Failed to merge credentials to kube config file: %s', ex)
 
 
-def aks_scale(client, resource_group_name, name, agent_count):
+def aks_scale(client, resource_group_name, name, agent_count, no_wait=False):
     """Scale the agent pool in a managed Kubernetes cluster.
     :param resource_group_name: The name of the resource group. The name
      is case insensitive.
@@ -811,17 +793,22 @@ def aks_scale(client, resource_group_name, name, agent_count):
     :type name: str
     :param agent_count: The desired number of agent nodes.
     :type agent_count: int
+    :param no_wait: Start upgrading but return immediately instead of waiting
+     until the managed cluster is upgraded.
+    :type no_wait: bool
     """
     instance = client.get(resource_group_name, name)
+    # TODO: change this approach when we support multiple agent pools.
     instance.properties.agent_pool_profiles[0].count = int(agent_count)  # pylint: disable=no-member
 
     # null out the service principal because otherwise validation complains
     instance.properties.service_principal_profile = None
 
-    return client.create_or_update(resource_group_name, name, instance)
+    response = client.create_or_update(resource_group_name, name, instance, raw=no_wait)
+    return _handle_response(response, no_wait, name, operation="Scale")
 
 
-def aks_upgrade(client, resource_group_name, name, kubernetes_version, **kwargs):
+def aks_upgrade(client, resource_group_name, name, kubernetes_version, no_wait=False, **kwargs):
     """Upgrade a managed Kubernetes cluster to a newer version.
     :param resource_group_name: The name of the resource group. The name
      is case insensitive.
@@ -831,6 +818,9 @@ def aks_upgrade(client, resource_group_name, name, kubernetes_version, **kwargs)
     :param kubernetes_version: The version of Kubernetes to upgrade the cluster to,
     such as '1.7.7' or '1.8.1'.
     :type kubernetes_version: str
+    :param no_wait: Start upgrading but return immediately instead of waiting
+     until the managed cluster is upgraded.
+    :type no_wait: bool
     """
     instance = client.get(resource_group_name, name)
     instance.properties.kubernetes_release = None
@@ -839,7 +829,8 @@ def aks_upgrade(client, resource_group_name, name, kubernetes_version, **kwargs)
     # null out the service principal because otherwise validation complains
     instance.properties.service_principal_profile = None
 
-    return client.create_or_update(resource_group_name, name, instance)
+    response = client.create_or_update(resource_group_name, name, instance, raw=no_wait)
+    return _handle_response(response, no_wait, name, operation="upgrade")
 
 
 def aks_get_versions(client, resource_group_name, name):
@@ -851,3 +842,18 @@ def aks_get_versions(client, resource_group_name, name):
     :type name: str
     """
     return client.get_upgrade_profile(resource_group_name, name)
+
+
+def _handle_response(response, no_wait=False, name="managed cluster", operation="User", success_codes=[200, ]):
+    """Handle a possibly "raw" response (when --no-wait is passed) by logging in a consistent
+    way. Just return the response if no_wait is False.
+    """
+    if no_wait:
+        raw = response.response
+        msg = "{} request for {} ".format(operation, name)
+        if raw.status_code in success_codes:
+            logger.warn(msg + "successfully received.")
+        else:
+            raise CLIError(msg + "returned {}: {}".format(raw.status_code, raw.reason))
+    else:
+        return response
