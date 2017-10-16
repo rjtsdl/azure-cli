@@ -12,14 +12,16 @@ class AzureKubernetesServiceScenarioTest(ScenarioTest):
     def test_aks_create_default_service(self, resource_group, resource_group_location):
         # the simplest aks create scenario
         loc = resource_group_location
+        # override loc to westus2
+        loc = 'westus2'
         ssh_pubkey_file = self.generate_ssh_keys()
         acs_name = self.create_random_name('cliakstest', 16)
         dns_prefix = self.create_random_name('cliasdns', 16)
 
         # create
         ssh_pubkey_file = ssh_pubkey_file.replace('\\', '\\\\')
-        create_cmd = 'aks create -g {} -n {} --dns-name-prefix {} --ssh-key-value {}'
-        self.cmd(create_cmd.format(resource_group, acs_name, dns_prefix, ssh_pubkey_file), checks=[
+        create_cmd = 'aks create -g {} -n {} --dns-name-prefix {} --ssh-key-value {} -l {}'
+        self.cmd(create_cmd.format(resource_group, acs_name, dns_prefix, ssh_pubkey_file, loc), checks=[
             JMESPathCheck('properties.outputs.fqdn.value', '{}.hcp.{}.azmk8s.io'.format(dns_prefix, loc))
         ])
 
@@ -46,6 +48,8 @@ class AzureKubernetesServiceScenarioTest(ScenarioTest):
     @ResourceGroupPreparer()
     def test_aks_create_with_upgrade(self, resource_group, resource_group_location):
         loc = resource_group_location
+        # override loc to westus2
+        loc = 'westus2'
         ssh_pubkey_file = self.generate_ssh_keys()
         acs_name = self.create_random_name('cliakstest', 16)
         dns_prefix = self.create_random_name('cliasdns', 16)
@@ -53,8 +57,8 @@ class AzureKubernetesServiceScenarioTest(ScenarioTest):
 
         # create
         ssh_pubkey_file = ssh_pubkey_file.replace('\\', '\\\\')
-        create_cmd = 'aks create -g {} -n {} --dns-name-prefix {} --ssh-key-value {} --kubernetes-version {}'
-        self.cmd(create_cmd.format(resource_group, acs_name, dns_prefix, ssh_pubkey_file, original_k8s_version), checks=[
+        create_cmd = 'aks create -g {} -n {} --dns-name-prefix {} --ssh-key-value {} --kubernetes-version {} -l {}'
+        self.cmd(create_cmd.format(resource_group, acs_name, dns_prefix, ssh_pubkey_file, original_k8s_version, loc), checks=[
             JMESPathCheck('properties.outputs.fqdn.value', '{}.hcp.{}.azmk8s.io'.format(dns_prefix, loc))
         ])
 
