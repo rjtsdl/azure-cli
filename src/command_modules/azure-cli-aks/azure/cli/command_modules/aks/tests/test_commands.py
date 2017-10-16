@@ -45,8 +45,42 @@ class AzureKubernetesServiceScenarioTest(ScenarioTest):
 
     @ResourceGroupPreparer()
     def test_aks_create_with_upgrade(self, resource_group, resource_group_location):
-        # test create a lower version cluster, then followed by a upgrade command
-        pass
+        loc = resource_group_location
+        ssh_pubkey_file = self.generate_ssh_keys()
+        acs_name = self.create_random_name('cliakstest', 16)
+        dns_prefix = self.create_random_name('cliasdns', 16)
+        original_k8s_version = '1.7.7'
+
+        # create
+        ssh_pubkey_file = ssh_pubkey_file.replace('\\', '\\\\')
+        create_cmd = 'aks create -g {} -n {} --dns-name-prefix {} --ssh-key-value {} --kubernetes-version {}'
+        self.cmd(create_cmd.format(resource_group, acs_name, dns_prefix, ssh_pubkey_file, original_k8s_version), checks=[
+            JMESPathCheck('properties.outputs.fqdn.value', '{}.hcp.{}.azmk8s.io'.format(dns_prefix, loc))
+        ])
+
+        # show
+        self.cmd('aks show -g {} -n {}'.format(resource_group, acs_name), checks=[
+            JMESPathCheck('type', 'Microsoft.ContainerService/ManagedClusters'),
+            JMESPathCheck('name', acs_name),
+            JMESPathCheck('resourceGroup', resource_group),
+            JMESPathCheck('properties.agentPoolProfiles[0].count', 3),
+            JMESPathCheck('properties.agentPoolProfiles[0].vmSize', 'Standard_D2_v2'),
+            JMESPathCheck('properties.dnsPrefix', dns_prefix),
+            JMESPathCheck('properties.provisionState', 'Succeeded'),
+            JMESPathCheck('properties.kubernetesVersion', '1.7.7')
+        ])
+
+        # upgrade
+        new_k8s_version = '1.8.1'
+        upgrade_cmd = 'aks upgrade -g {} -n {} --kubernetes-version {}'
+        self.cmd(upgrade_cmd.format(resource_group, acs_name, new_k8s_version), checks=[
+            JMESPathCheck('properties.provisionState', 'Succeeded')
+        ])
+
+        # show again
+        self.cmd('aks show -g {} -n {}'.format(resource_group, acs_name), checks=[
+            JMESPathCheck('properties.kubernetesVersion', '1.8.1')
+        ])
 
     @classmethod
     def generate_ssh_keys(cls):
