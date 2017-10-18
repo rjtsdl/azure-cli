@@ -1376,7 +1376,7 @@ def _ensure_service_principal(service_principal=None,
             logger.info('Created a service principal: %s', service_principal)
             # add role first before save it
             if not _add_role_assignment('Contributor', service_principal):
-                raise CLIError('Could not create a service principal with the right permissions. '
+                logger.warning('Could not create a service principal with the right permissions. '
                                'Are you an Owner on this project?')
             store_acs_service_principal(subscription_id, client_secret, service_principal)
     else:
