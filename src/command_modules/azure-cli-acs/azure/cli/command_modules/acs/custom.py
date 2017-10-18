@@ -345,7 +345,7 @@ def _add_role_assignment(role, service_principal, delay=2):
             # TODO: break this out into a shared utility library
             create_role_assignment(role, service_principal)
             # Sleep for a while to get role assignment propagated
-            time.sleep(delay + delay * x)
+            time.sleep(20)
             break
         except CloudError as ex:
             if ex.message == 'The role assignment already exists.':
@@ -1374,11 +1374,11 @@ def _ensure_service_principal(service_principal=None,
                 raise CLIError('Could not create a service principal with the right permissions. '
                                'Are you an Owner on this project?')
             logger.info('Created a service principal: %s', service_principal)
+            # add role first before save it
+            if not _add_role_assignment('Contributor', service_principal):
+                raise CLIError('Could not create a service principal with the right permissions. '
+                               'Are you an Owner on this project?')
             store_acs_service_principal(subscription_id, client_secret, service_principal)
-        # Either way, update the role assignment, this fixes things if we fail part-way through
-        if not _add_role_assignment('Contributor', service_principal):
-            raise CLIError('Could not create a service principal with the right permissions. '
-                           'Are you an Owner on this project?')
     else:
         # --service-principal specfied, validate --client-secret was too
         if not client_secret:
