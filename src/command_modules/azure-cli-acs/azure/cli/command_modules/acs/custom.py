@@ -519,77 +519,8 @@ def acs_create(resource_group_name, deployment_name, name, ssh_key_value, dns_na
 
     elif windows:
         raise CLIError('--windows is only supported for Kubernetes clusters')
-
-    return _create(resource_group_name, deployment_name, dns_name_prefix, name,
-                   ssh_key_value, admin_username=admin_username,
-                   api_version=api_version,
-                   orchestrator_type=orchestrator_type,
-                   orchestrator_version=orchestrator_version,
-                   master_profile=master_profile,
-                   master_vm_size=master_vm_size,
-                   master_osdisk_size=master_osdisk_size,
-                   master_vnet_subnet_id=master_vnet_subnet_id,
-                   master_first_consecutive_static_ip=master_first_consecutive_static_ip,
-                   master_storage_profile=master_storage_profile,
-                   agent_profiles=agent_profiles,
-                   agent_count=agent_count, agent_vm_size=agent_vm_size,
-                   agent_osdisk_size=agent_osdisk_size,
-                   agent_vnet_subnet_id=agent_vnet_subnet_id,
-                   agent_ports=agent_ports,
-                   agent_storage_profile=agent_storage_profile,
-                   location=location, service_principal=service_principal,
-                   client_secret=client_secret, master_count=master_count,
-                   windows=windows, admin_password=admin_password,
-                   validate=validate, no_wait=no_wait, tags=tags)
-
-
-def store_acs_service_principal(subscription_id, client_secret, service_principal,
-                                config_path=os.path.join(get_config_dir(),
-                                                         'acsServicePrincipal.json')):
-    obj = {}
-    if client_secret:
-        obj['client_secret'] = client_secret
-    if service_principal:
-        obj['service_principal'] = service_principal
-
-    fullConfig = load_acs_service_principals(config_path=config_path)
-    if not fullConfig:
-        fullConfig = {}
-    fullConfig[subscription_id] = obj
-
-    with os.fdopen(os.open(config_path, os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0o600),
-                   'w+') as spFile:
-        json.dump(fullConfig, spFile)
-
-
-def load_acs_service_principal(subscription_id, config_path=os.path.join(get_config_dir(),
-                                                                         'acsServicePrincipal.json')):
-    config = load_acs_service_principals(config_path)
-    if not config:
-        return None
-    return config.get(subscription_id)
-
-
-def load_acs_service_principals(config_path):
-    if not os.path.exists(config_path):
-        return None
-    fd = os.open(config_path, os.O_RDONLY)
-    try:
-        with os.fdopen(fd) as f:
-            return shell_safe_json_parse(f.read())
-    except:  # pylint: disable=bare-except
-        return None
-
-
-# pylint: disable-msg=too-many-arguments
-def _create(resource_group_name, deployment_name, dns_name_prefix, name, ssh_key_value,
-            admin_username="azureuser", api_version=None, orchestrator_type="DCOS", orchestrator_version="",
-            master_profile=None, master_vm_size="Standard_D2_v2", master_osdisk_size=0, master_count=1,
-            master_vnet_subnet_id="", master_first_consecutive_static_ip="", master_storage_profile="",
-            agent_profiles=None, agent_count=3, agent_vm_size="Standard_D2_v2", agent_osdisk_size=0,
-            agent_vnet_subnet_id="", agent_ports=None, agent_storage_profile="",
-            location=None, service_principal=None, client_secret=None,
-            windows=False, admin_password='', validate=False, no_wait=False, tags=None):
+    
+    # start construct template
     if not location:
         location = '[resourceGroup().location]'
     windows_profile = None
@@ -740,6 +671,44 @@ def _create(resource_group_name, deployment_name, dns_name_prefix, name, ssh_key
             }
         }
     return _invoke_deployment(resource_group_name, deployment_name, template, params, validate, no_wait)
+
+
+def store_acs_service_principal(subscription_id, client_secret, service_principal,
+                                config_path=os.path.join(get_config_dir(),
+                                                         'acsServicePrincipal.json')):
+    obj = {}
+    if client_secret:
+        obj['client_secret'] = client_secret
+    if service_principal:
+        obj['service_principal'] = service_principal
+
+    fullConfig = load_acs_service_principals(config_path=config_path)
+    if not fullConfig:
+        fullConfig = {}
+    fullConfig[subscription_id] = obj
+
+    with os.fdopen(os.open(config_path, os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0o600),
+                   'w+') as spFile:
+        json.dump(fullConfig, spFile)
+
+
+def load_acs_service_principal(subscription_id, config_path=os.path.join(get_config_dir(),
+                                                                         'acsServicePrincipal.json')):
+    config = load_acs_service_principals(config_path)
+    if not config:
+        return None
+    return config.get(subscription_id)
+
+
+def load_acs_service_principals(config_path):
+    if not os.path.exists(config_path):
+        return None
+    fd = os.open(config_path, os.O_RDONLY)
+    try:
+        with os.fdopen(fd) as f:
+            return shell_safe_json_parse(f.read())
+    except:  # pylint: disable=bare-except
+        return None
 
 
 def _invoke_deployment(resource_group_name, deployment_name, template, parameters, validate, no_wait):
