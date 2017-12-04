@@ -3,6 +3,10 @@
 Release History
 ===============
 
+unreleased
+++++++++++
+* add korea south and korea central to preview regions
+
 2.0.19
 ++++++
 * call "agent" a "node" in AKS to match documentation
